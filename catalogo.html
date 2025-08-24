@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="stylesheet" href="assets/style.css" />
+  
+</head>
+<body>
+  <header class="site" role="banner">
+    <div class="topbar">Xilu Mayorista: catálogo y ofertas. Pedidos por WhatsApp. Sin compras online.</div>
+    <nav class="container nav" aria-label="Principal">
+      <a class="brand" href="index.html">
+        <img src="favicon.ico" alt="Xilu Mayorista">
+        <span>Xilu Mayorista</span>
+      </a>
+      <div style="margin-left:auto;display:flex;gap:10px;flex-wrap:wrap">
+        <a href="catalogo.html">Catálogo</a>
+        <a href="ofertas.html">Ofertas</a>
+        <a href="contacto.html">Contacto</a>
+        <a href="admin.html">Panel</a>
+      </div>
+    </nav>
+  </header>
+  
+
+  <main class="container" id="main">
+    <h1>Catálogo</h1>
+
+    <!-- Filtros (una sola línea) -->
+<section class="filters-row" aria-label="Filtros">
+  <fieldset class="search">
+    <legend>Buscar</legend>
+    <label class="sr-only" for="q">Nombre o marca</label>
+    <input id="q" type="search" placeholder="Nombre o marca" autocomplete="off">
+  </fieldset>
+
+  <fieldset>
+    <legend>Categoría</legend>
+    <select id="f-cat"></select>
+  </fieldset>
+
+  <fieldset>
+    <legend>Marca</legend>
+    <select id="f-brand"></select>
+  </fieldset>
+
+  <fieldset class="price">
+    <legend>Precio</legend>
+    <div class="row-2">
+      <input id="p-min" type="number" placeholder="Mín" min="0">
+      <input id="p-max" type="number" placeholder="Máx" min="0">
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Ordenar</legend>
+    <select id="order">
+      <option value="recent">Más recientes</option>
+      <option value="price-asc">Menor precio</option>
+      <option value="price-desc">Mayor precio</option>
+    </select>
+  </fieldset>
+</section>
+
+
+    <!-- Grilla y paginado -->
+    <section aria-live="polite" style="margin-top:12px">
+      <div id="catalog-grid" class="grid cols-4"></div>
+      <div class="pagination" id="pagination"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a class="btn whatsapp" href="https://wa.me/092567300" target="_blank" rel="noopener">WhatsApp</a>
+        <a class="btn call" href="tel:092567300">Llamar</a>
+        <a class="btn maps" href="https://maps.app.goo.gl/vwNEasJqKRDYNhz88" target="_blank" rel="noopener">¿Cómo llegar?</a>
+      </div>
+      <p class="meta">© 2025 Xilu Mayorista · Sitio de catálogo sin ventas online</p>
+    </div>
+  </footer>
+
+  <script>
+    async function loadJSON(path){ try{ const r = await fetch(path,{cache:'no-store'}); return await r.json(); }catch(e){ return []; } }
+    function getLS(key){ try{ return JSON.parse(localStorage.getItem(key)||'[]'); }catch{ return []; } }
+    function priceFormat(n){ return n!=null ? '$ ' + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.') : ''; }
+
+    async function initCatalog(){
+      const grid = document.getElementById('catalog-grid');
+      const qInput = document.getElementById('q');
+      const catSel = document.getElementById('f-cat');
+      const brandSel = document.getElementById('f-brand');
+      const orderSel = document.getElementById('order');
+      const pMin = document.getElementById('p-min');
+      const pMax = document.getElementById('p-max');
+      const params = new URLSearchParams(location.search);
+
+      qInput.value = params.get('q')||'';
+
+      let products = getLS('xilu_products'); if(!products.length) products = await loadJSON('data/products.json');
+      let offers = getLS('xilu_offers'); if(!offers.length) offers = await loadJSON('data/offers.json');
+
+      const cats = ['Todas', ...new Set(products.map(p=>p.category).filter(Boolean))];
+      catSel.innerHTML = cats.map(c=>`<option ${params.get('cat')===c?'selected':''}>${c}</option>`).join('');
+
+      const brands = ['Todas', ...new Set(products.map(p=>p.brand).filter(Boolean))];
+      brandSel.innerHTML = brands.map(b=>`<option>${b}</option>`).join('');
+
+      const pageSize = 12; let page = 1;
+
+      function activeOfferFor(pid){
+        const now = new Date();
+        return offers.find(o=>{
+          if(o.product_id && Number(o.product_id) !== Number(pid)) return false;
+          const fromOk = !o.valid_from || new Date(o.valid_from) <= now;
+          const toOk = !o.valid_to || new Date(o.valid_to) >= now;
+          return fromOk && toOk;
+        });
+      }
+
+      function apply(){
+        const q = (qInput.value||'').toLowerCase();
+        const cat = catSel.value;
+        const brand = brandSel.value;
+        const min = parseFloat(pMin.value||'0');
+        const max = parseFloat(pMax.value||'999999999');
+
+        let list = products.filter(p=>
+          (cat==='Todas'||p.category===cat) &&
+          (brand==='Todas'||p.brand===brand) &&
+          (p.price==null || (p.price>=min && p.price<=max)) &&
+          ((p.name+' '+(p.brand||'')).toLowerCase().includes(q))
+        );
+
+        const ord = orderSel.value;
+        if(ord==='recent') list.sort((a,b)=> new Date(b.published_at||0)-new Date(a.published_at||0));
+        if(ord==='price-asc') list.sort((a,b)=> (a.price||0)-(b.price||0));
+        if(ord==='price-desc') list.sort((a,b)=> (b.price||0)-(a.price||0));
+
+        const total = list.length; const pages = Math.max(1, Math.ceil(total/pageSize));
+        if(page>pages) page = 1;
+        const slice = list.slice((page-1)*pageSize, page*pageSize);
+
+        grid.innerHTML = slice.map(p=>{
+          const offer = activeOfferFor(p.id);
+          const badge = (p.labels&&p.labels[0]) || (offer&&'Oferta');
+          let price = p.price;
+          if(offer){ price = (offer.type==='percent' && p.price!=null) ? Math.round(p.price*(1-offer.value/100)) : (offer.type==='price' ? offer.value : p.price); }
+          const priceHtml = (price!=null) ? `<div class="price">${priceFormat(price)}</div>` : '<div class="meta">Precio en góndola</div>';
+          const stock = p.in_stock ? 'En stock en sucursal' : 'Consultar stock';
+          const imgSrc = (p.image_data||p.image)||'assets/placeholder.png';
+          return `<a class="card" href="producto.html?id=${p.id}" aria-label="${p.name} ${p.brand||''} ${p.presentation||''}">
+            <span class="thumb">
+              ${badge?`<span class='badge'>${badge}</span>`:''}
+              <img src="${imgSrc}" alt="${p.name}" loading="lazy" decoding="async">
+            </span>
+            <div class="content">
+              <h3 style="margin:0 0 4px 0;font-size:1rem">${p.name}</h3>
+              <div class="meta">${p.brand||''} ${p.presentation?('· '+p.presentation):''}</div>
+              ${priceHtml}
+              <div class="meta">${stock}</div>
+            </div>
+          </a>`;
+        }).join('') || '<p>No se encontraron productos.</p>';
+
+        const pag = document.getElementById('pagination');
+        pag.innerHTML = `<button ${page<=1?'disabled':''} data-act="prev" aria-label="Página anterior">◀</button>
+          <span>Página ${page} de ${pages}</span>
+          <button ${page>=pages?'disabled':''} data-act="next" aria-label="Página siguiente">▶</button>`;
+        pag.onclick = (e)=>{
+          const act = e.target.getAttribute('data-act');
+          if(act==='prev' && page>1){ page--; apply(); }
+          if(act==='next' && page<pages){ page++; apply(); }
+        };
+      }
+
+      [qInput, catSel, brandSel, orderSel, pMin, pMax].forEach(el=> el && el.addEventListener('input', ()=>{ page=1; apply(); }));
+      apply();
+    }
+
+    document.addEventListener('DOMContentLoaded', initCatalog);
+  </script>
+</body>
+</html>

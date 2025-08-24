@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="es">\>
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="stylesheet" href="assets/style.css" />
+
+</head>
+<body>
+  <header class="site" role="banner">
+    <div class="topbar">Xilu Mayorista: catálogo y ofertas. Pedidos por WhatsApp. Sin compras online.</div>
+    <nav class="container nav" aria-label="Principal">
+      <a class="brand" href="index.html">
+        <img src="favicon.ico" alt="Xilu Mayorista">
+        <span>Xilu Mayorista</span>
+      </a>
+      <div style="margin-left:auto;display:flex;gap:10px;flex-wrap:wrap">
+        <a href="catalogo.html">Catálogo</a>
+        <a href="ofertas.html">Ofertas</a>
+        <a href="contacto.html">Contacto</a>
+        <a href="admin.html">Panel</a>
+      </div>
+    </nav>
+  </header>
+  
+
+  <main class="container" id="main">
+    <nav id="breadcrumbs" class="meta" style="margin:10px 0"></nav>
+    <div id="notfound" hidden>
+      <h1>Producto no encontrado</h1>
+      <p>Volvé al <a href="catalogo.html">catálogo</a> para seleccionar otro producto.</p>
+    </div>
+
+    <article id="product" hidden>
+      <div class="grid cols-2">
+        <section>
+          <div class="card">
+            <figure class="thumb">
+              <img id="p-img" src="" alt="" loading="lazy" decoding="async" style="width:100%;height:auto" />
+            </figure>
+          </div>
+          <div id="gallery" class="gallery" style="margin-top:8px"></div>
+        </section>
+        <section>
+          <h1 id="p-name" style="margin-top:0"></h1>
+          <p class="meta" id="p-brand"></p>
+          <p class="meta" id="p-presentation"></p>
+          <div id="p-labels" style="margin:6px 0"></div>
+          <div id="p-diet" style="margin:6px 0"></div>
+          <div id="p-price" class="price"></div>
+          <p id="p-stock" class="meta"></p>
+          <div class="cta-row" style="margin:8px 0">
+            <a class="btn whatsapp" href="https://wa.me/092567300" target="_blank" rel="noopener">WhatsApp</a>
+            <a class="btn call" href="tel:092567300">Llamar</a>
+            <a class="btn maps" href="https://maps.app.goo.gl/vwNEasJqKRDYNhz88" target="_blank" rel="noopener">¿Cómo llegar?</a>
+          </div>
+          <section style="margin-top:10px">
+            <h2>Descripción</h2>
+            <p id="p-desc" class="meta"></p>
+          </section>
+          <section style="margin-top:10px" id="p-nutri-wrap" hidden>
+            <h2>Información nutricional</h2>
+            <table id="p-nutri"></table>
+          </section>
+        </section>
+      </div>
+    </article>
+
+    <section class="related" style="margin-top:24px">
+      <h2>Relacionados</h2>
+      <div id="related-grid" class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr))"></div>
+    </section>
+
+    <script id="product-jsonld" type="application/ld+json"></script>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p class="meta">© 2025 Xilu Mayorista · Detalle de producto</p>
+    </div>
+  </footer>
+
+  <script>
+    async function loadJSON(path){ try{ const r = await fetch(path,{cache:'no-store'}); return await r.json(); }catch(e){ return []; } }
+    function getLS(key){ try{ return JSON.parse(localStorage.getItem(key)||'[]'); }catch{ return []; } }
+    function priceFormat(n){ return n!=null ? '$ ' + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.') : ''; }
+
+    function setText(el, txt){ if(!el) return; el.textContent = txt||''; }
+
+    function renderNutrition(tbl, data){
+      if(!tbl || !data) return; 
+      const rows = Object.entries(data).map(([k,v])=>`<tr><th style="text-transform:capitalize">${k}</th><td>${v}</td></tr>`).join('');
+      tbl.innerHTML = `<thead><tr><th>Nutriente</th><th>Valor</th></tr></thead><tbody>${rows}</tbody>`;
+    }
+
+    function productJSONLD(p){
+      const obj = {
+        '@context':'https://schema.org', '@type':'Product',
+        name: p.name, brand: p.brand||'', description: p.description||'',
+        sku: String(p.id), image: (p.image_data? [p.image_data] : (p.image?[p.image]:[])),
+        offers: p.price!=null ? { '@type':'Offer', price: p.price, priceCurrency: 'UYU', availability: p.in_stock? 'https://schema.org/InStock':'https://schema.org/OutOfStock' } : undefined
+      };
+      return JSON.stringify(obj);
+    }
+
+    async function init(){
+      const params = new URLSearchParams(location.search);
+      const idParam = params.get('id');
+      const crumbs = document.getElementById('breadcrumbs');
+      const notfound = document.getElementById('notfound');
+      const art = document.getElementById('product');
+
+      let products = getLS('xilu_products'); if(!products.length) products = await loadJSON('data/products.json');
+      const p = products.find(x=> String(x.id) === String(idParam));
+
+      if(!p){ notfound.hidden = false; return; }
+
+      // Breadcrumbs
+      crumbs.innerHTML = `<a href='index.html'>Inicio</a> / <a href='catalogo.html${p.category?('?cat='+encodeURIComponent(p.category)):''}'>Catálogo</a>${p.category?` / <a href='catalogo.html?cat=${encodeURIComponent(p.category)}'>${p.category}</a>`:''} / <span>${p.name}</span>`;
+
+      // Fill main
+      document.title = `${p.name} · Xilu Mayorista`;
+      setText(document.getElementById('p-name'), p.name);
+      setText(document.getElementById('p-brand'), p.brand? `Marca: ${p.brand}`:'');
+      setText(document.getElementById('p-presentation'), p.presentation);
+      const img = document.getElementById('p-img');
+      img.src = (p.image_data||p.image)||'assets/placeholder.png';
+      img.alt = p.name || 'Producto';
+
+      const labels = (p.labels||[]).map(l=>`<span class='label'>${l}</span>`).join('');
+      document.getElementById('p-labels').innerHTML = labels;
+
+      const diet = (p.diet||[]).map(l=>`<span class='diet'>${l}</span>`).join('');
+      document.getElementById('p-diet').innerHTML = diet;
+
+      const priceEl = document.getElementById('p-price');
+      priceEl.innerHTML = p.price!=null ? priceFormat(p.price) : '<span class="meta">Precio en góndola</span>';
+
+      setText(document.getElementById('p-stock'), p.in_stock? 'En stock en sucursal':'Consultar stock');
+      setText(document.getElementById('p-desc'), p.description||'');
+
+      if(p.nutrition){
+        document.getElementById('p-nutri-wrap').hidden = false;
+        renderNutrition(document.getElementById('p-nutri'), p.nutrition);
+      }
+
+      // JSON-LD
+      document.getElementById('product-jsonld').textContent = productJSONLD(p);
+
+      // Related by category
+      let related = products.filter(x=> x.category===p.category && x.id!==p.id).slice(0,4);
+      const rg = document.getElementById('related-grid');
+      rg.innerHTML = related.map(r=>`
+        <a class="card" href="producto.html?id=${r.id}">
+          <div class="thumb"><img src="${(r.image_data||r.image)||'assets/placeholder.png'}" alt="${r.name}" loading="lazy" decoding="async"></div>
+          <div class="content">
+            <div style="font-weight:600">${r.name}</div>
+            <div class="meta">${r.brand||''} ${r.presentation?('· '+r.presentation):''}</div>
+          </div>
+        </a>`).join('') || '<p class="meta">No hay relacionados.</p>';
+
+      art.hidden = false;
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

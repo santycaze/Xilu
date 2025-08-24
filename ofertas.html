@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" type="image/x-icon" href="logo.png">
+  <link rel="stylesheet" href="assets/style.css" />
+  
+</head>
+<body>
+  <header class="site" role="banner">
+    <div class="topbar">Xilu Mayorista: catálogo y ofertas. Pedidos por WhatsApp. Sin compras online.</div>
+    <nav class="container nav" aria-label="Principal">
+      <a class="brand" href="index.html">
+        <img src="favicon.ico" alt="Xilu Mayorista">
+        <span>Xilu Mayorista</span>
+      </a>
+      <div style="margin-left:auto;display:flex;gap:10px;flex-wrap:wrap">
+        <a href="catalogo.html">Catálogo</a>
+        <a href="ofertas.html">Ofertas</a>
+        <a href="contacto.html">Contacto</a>
+        <a href="admin.html">Panel</a>
+      </div>
+    </nav>
+  </header>
+  
+
+  <main class="container" id="main">
+    <h1>Ofertas</h1>
+    <p class="meta">Las ofertas pueden tener stock limitado o condiciones específicas. Si no se indica fecha de vigencia, se consideran vigentes hasta nuevo aviso.</p>
+
+    <div id="offers-list" class="grid cols-3" aria-live="polite"></div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a class="btn whatsapp" href="https://wa.me/092567300" target="_blank" rel="noopener">WhatsApp</a>
+        <a class="btn" href="tel:092567300">Llamar</a>
+        <a class="btn" href="https://maps.app.goo.gl/vwNEasJqKRDYNhz88" target="_blank" rel="noopener">¿Cómo llegar?</a>
+      </div>
+      <p class="meta">© 2025 Xilu Mayorista · Sitio de catálogo sin ventas online</p>
+    </div>
+  </footer>
+
+  <script>
+    async function loadJSON(path){ try{ const r = await fetch(path,{cache:'no-store'}); return await r.json(); }catch(e){ return []; } }
+    function getLS(key){ try{ return JSON.parse(localStorage.getItem(key)||'[]'); }catch{ return []; } }
+
+    function validityLabel(of){
+      const hasDates = of.valid_from || of.valid_to;
+      if(!hasDates) return 'Vigente';
+      const now = new Date();
+      const fromOk = !of.valid_from || new Date(of.valid_from) <= now;
+      const toOk = !of.valid_to || new Date(of.valid_to) >= now;
+      return (fromOk && toOk) ? 'Vigente' : 'Expirada';
+    }
+
+    async function initOffers(){
+      const list = document.getElementById('offers-list');
+      let offers = getLS('xilu_offers'); if(!offers.length) offers = await loadJSON('data/offers.json');
+      let products = getLS('xilu_products'); if(!products.length) products = await loadJSON('data/products.json');
+
+      if(!offers.length){ list.innerHTML = '<p>No hay ofertas cargadas. Usá el <a href="admin.html">Panel</a> para agregar.</p>'; return; }
+
+      list.innerHTML = offers.map(of=>{
+        // Buscar producto relacionado (para usar su imagen si la oferta no tiene)
+        const p = of.product_id ? products.find(pp=>String(pp.id)===String(of.product_id)) : null;
+        const state = validityLabel(of);
+        // Prioridad: imagen propia de la oferta > imagen del producto > placeholder
+        const img = of.image_data || of.image || (p ? (p.image_data || p.image) : 'assets/placeholder.png');
+        const dateStr = (of.valid_from||of.valid_to) ? `Válido ${of.valid_from||''}${(of.valid_from&&of.valid_to)?' al ':''}${of.valid_to||''}` : 'Vigente';
+        const href = p ? `producto.html?id=${p.id}` : '#';
+        return `
+        <a class="card" href="${href}">
+          <span class="thumb">
+            <span class="badge">${state}</span>
+            <img src="${img}" alt="${of.title}" loading="lazy" decoding="async" />
+          </span>
+          <div class="content">
+            <h3>${of.title}</h3>
+            ${p?`<div class="meta">${p.name}${p.presentation?(' · '+p.presentation):''}</div>`:''}
+            <div class="meta">${dateStr}</div>
+            ${of.conditions?`<div class="meta">${of.conditions}</div>`:''}
+          </div>
+        </a>`;
+      }).join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', initOffers);
+  </script>
+</body>
+</html>

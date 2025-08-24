@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panel · Xilu Mayorista</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="stylesheet" href="assets/style.css" />
+  <style>
+    /* Solo mínimos retoques visuales específicos del panel */
+    .login-card{max-width:520px;margin:24px auto}
+    .login-card .hint{margin-top:8px}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+    .cols-2{display:grid;gap:16px}
+    @media(min-width:1000px){.cols-2{grid-template-columns:1fr 1fr}}
+    dialog.form{border:0;padding:0;background:transparent;max-width:min(900px,95vw)}
+    dialog.form::backdrop{background:rgba(0,0,0,.55)}
+    .dialog-card{background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:16px}
+    .dialog-grid{display:grid;gap:12px;grid-template-columns:1fr}
+    @media(min-width:768px){.dialog-grid{grid-template-columns:1fr 1fr}.dialog-grid textarea{grid-column:span 2}.dialog-actions{grid-column:span 2}}
+    .thumb-prev{width:96px;height:96px;border:1px solid var(--border);border-radius:10px;object-fit:contain;background:#fff}
+    .dialog-actions{display:flex;gap:8px;justify-content:flex-end}
+    .hide{display:none!important}
+  </style>
+</head>
+<body>
+  <!-- Header unificado -->
+  <header class="site" role="banner">
+    <div class="topbar">Xilu Mayorista · Panel de administración</div>
+    <nav class="container nav" aria-label="Principal">
+      <a class="brand" href="index.html" style="text-decoration:none;font-weight:900;display:flex;gap:8px;align-items:center">
+        <img src="favicon.ico" alt="Xilu Mayorista" style="height:36px;width:auto;border-radius:8px"><span>Xilu Mayorista</span>
+      </a>
+      <div style="margin-left:auto;display:flex;gap:10px;flex-wrap:wrap">
+        <a href="catalogo.html">Catálogo</a>
+        <a href="ofertas.html">Ofertas</a>
+        <a href="contacto.html">Contacto</a>
+        <a href="admin.html" aria-current="page" class="cta">Panel</a>
+        <button id="btn-logout" class="btn danger hide" type="button">Cerrar sesión</button>
+      </div>
+    </nav>
+  </header>
+
+  <main class="container" id="main" style="margin-top:14px">
+    <!-- Login -->
+    <section id="login-wrap" class="login-card card" style="padding:16px">
+      <h1 style="margin:0 0 8px 0">Ingresar al panel</h1>
+      <form id="admin-login" class="dialog-grid" style="grid-template-columns:1fr">
+        <label for="admin-pin">PIN de administrador</label>
+        <input id="admin-pin" type="password" placeholder="Ingresar PIN" autocomplete="off" inputmode="numeric" />
+        <div class="dialog-actions">
+          <button id="btn-login" class="btn primary" type="submit">Entrar</button>
+        </div>
+        
+      </form>
+    </section>
+
+    <!-- Panel -->
+    <section id="panel-wrap" class="hide">
+      <div class="cols-2">
+        <section>
+          <h2 style="margin:0 0 8px 0">Productos</h2>
+          <div class="toolbar">
+            <button id="add-product" class="btn" type="button">Agregar producto</button>
+            <button id="clear-products" class="btn warning" type="button">Vaciar productos (este navegador)</button>
+          </div>
+          <div class="table-wrap">
+            <table id="products-table" class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th><th>Nombre</th><th>Marca</th><th>Presentación</th>
+                  <th>Categoría</th><th>Precio</th><th>Stock</th><th>Etiquetas</th>
+                  <th class="img">Imagen</th><th class="actions">Acciones</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+        <section>
+          <h2 style="margin:0 0 8px 0">Ofertas</h2>
+          <div class="toolbar">
+            <button id="add-offer" class="btn" type="button">Agregar oferta</button>
+            <button id="clear-offers" class="btn warning" type="button">Vaciar ofertas (este navegador)</button>
+          </div>
+          <div class="table-wrap">
+            <table id="offers-table" class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th><th>Título</th><th>ProductoID</th><th>Tipo</th><th>Valor</th>
+                  <th>Condiciones</th><th>Desde</th><th>Hasta</th>
+                  <th class="img">Imagen</th><th class="actions">Acciones</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <section style="margin-top:18px">
+        <h2 style="margin:0 0 8px 0">Opciones</h2>
+        <div class="toolbar">
+          <button id="change-pin" class="btn" type="button">Cambiar PIN</button>
+          <button id="export-data" class="btn" type="button">Exportar JSON</button>
+          <input id="import-file" type="file" accept="application/json" class="hide" />
+          <button id="import-data" class="btn" type="button">Importar JSON</button>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <!-- Dialog: Producto -->
+  <dialog id="dlg-product" class="form">
+    <div class="dialog-card">
+      <h3 style="margin:0 0 6px 0">Producto</h3>
+      <form id="form-product" class="dialog-grid">
+        <input type="hidden" id="p-id" />
+        <label>Nombre<input id="p-name" required></label>
+        <label>Marca<input id="p-brand"></label>
+        <label>Presentación<input id="p-pres"></label>
+        <label>Categoría<input id="p-cat"></label>
+        <label>Precio<input id="p-price" type="number" min="0" step="1"></label>
+        <label>Stock visible<select id="p-stock"><option value="true">Sí</option><option value="false">No</option></select></label>
+        <label>Etiquetas (coma)<input id="p-labels" placeholder="Nuevo, Destacado"></label>
+        <label>Descripción<textarea id="p-desc" rows="3"></textarea></label>
+        <label>Imagen (URL)<input id="p-image"></label>
+        <label>Imagen (archivo)<input id="p-file" type="file" accept="image/*"></label>
+        <img id="p-prev" class="thumb-prev" alt="Prev" />
+        <div class="dialog-actions">
+          <button type="button" class="btn" id="p-cancel">Cancelar</button>
+          <button type="submit" class="btn primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Dialog: Oferta -->
+  <dialog id="dlg-offer" class="form">
+    <div class="dialog-card">
+      <h3 style="margin:0 0 6px 0">Oferta</h3>
+      <form id="form-offer" class="dialog-grid">
+        <input type="hidden" id="o-id" />
+        <label>Título<input id="o-title" required></label>
+        <label>Producto ID (opcional)<input id="o-pid" type="number" min="0"></label>
+        <label>Tipo<select id="o-type"><option value="none">(sin precio)</option><option value="percent">% descuento</option><option value="price">Precio fijo</option></select></label>
+        <label>Valor<input id="o-value" type="number" min="0" step="1"></label>
+        <label>Condiciones<textarea id="o-cond" rows="2" placeholder="Stock limitado, etc."></textarea></label>
+        <label>Desde<input id="o-from" type="date"></label>
+        <label>Hasta<input id="o-to" type="date"></label>
+        <label>Imagen (URL)<input id="o-image"></label>
+        <label>Imagen (archivo)<input id="o-file" type="file" accept="image/*"></label>
+        <img id="o-prev" class="thumb-prev" alt="Prev" />
+        <div class="dialog-actions">
+          <button type="button" class="btn" id="o-cancel">Cancelar</button>
+          <button type="submit" class="btn primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Dialogo de confirmación -->
+  <dialog id="xilu-confirm" class="confirm" aria-labelledby="confirm-title" aria-modal="true">
+    <div class="confirm-card">
+      <h3 id="confirm-title" style="margin:0 0 6px 0">Confirmar acción</h3>
+      <p id="confirm-msg" class="meta" style="margin:0 0 12px 0">¿Estás seguro?</p>
+      <div class="confirm-actions">
+        <button type="button" id="confirm-ok" class="btn danger">Aceptar</button>
+        <button type="button" id="confirm-cancel" class="btn">Cancelar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+    /* =====================
+       SESIÓN PERSISTENTE
+       ===================== */
+    const PIN_KEY = 'xilu_admin_pin';
+    const LOGIN_KEY = 'xilu_admin_logged';
+    const TAB_COUNT_KEY = 'xilu_tab_count';
+
+    const loginWrap = document.getElementById('login-wrap');
+    const panelWrap = document.getElementById('panel-wrap');
+    const logoutBtn = document.getElementById('btn-logout');
+
+    function isLogged(){ return localStorage.getItem(LOGIN_KEY) === 'true'; }
+    function showPanel(logged){
+      if(logged){
+        loginWrap.classList.add('hide');
+        panelWrap.classList.remove('hide');
+        logoutBtn.classList.remove('hide');
+      }else{
+        loginWrap.classList.remove('hide');
+        panelWrap.classList.add('hide');
+        logoutBtn.classList.add('hide');
+      }
+    }
+
+    // Contador de pestañas para cerrar sesión cuando se cierra la ÚLTIMA ventana
+    function incTabs(){ const n = +(localStorage.getItem(TAB_COUNT_KEY)||0) + 1; localStorage.setItem(TAB_COUNT_KEY, n); }
+    function decTabsAndMaybeLogout(isReload){
+      if(isReload) return; // no tocar en reload
+      let n = +(localStorage.getItem(TAB_COUNT_KEY)||0) - 1; if(n < 0) n = 0; localStorage.setItem(TAB_COUNT_KEY, n);
+      if(n === 0){ localStorage.removeItem(LOGIN_KEY); localStorage.removeItem(TAB_COUNT_KEY); }
+    }
+
+    document.addEventListener('DOMContentLoaded', ()=>{
+      // Estado inicial de sesión
+      showPanel(isLogged());
+      // Tab count + hook de cierre
+      incTabs();
+      window.addEventListener('beforeunload', (e)=>{
+        const nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+        const isReload = nav && nav.type === 'reload';
+        decTabsAndMaybeLogout(isReload);
+      });
+    });
+
+    // Login con Enter
+    const loginForm = document.getElementById('admin-login');
+    const pinInput = document.getElementById('admin-pin');
+    document.getElementById('btn-login')?.addEventListener('click', (e)=>{ e.preventDefault(); doLogin(); });
+    loginForm?.addEventListener('submit', (e)=>{ e.preventDefault(); doLogin(); });
+
+    function doLogin(){
+      const pin = (pinInput.value||'').trim();
+      const saved = localStorage.getItem(PIN_KEY) || '1234';
+      if(pin !== saved){ alert('PIN incorrecto'); return; }
+      localStorage.setItem(LOGIN_KEY, 'true');
+      showPanel(true);
+    }
+
+    logoutBtn?.addEventListener('click', ()=>{
+      localStorage.removeItem(LOGIN_KEY);
+      showPanel(false);
+    });
+
+    /* =====================
+       CONFIRMACIÓN MODAL
+       ===================== */
+    function confirmXilu(message, {okText='Aceptar', cancelText='Cancelar', danger=true} = {}){
+      return new Promise(resolve=>{
+        const dlg = document.getElementById('xilu-confirm');
+        const msg = document.getElementById('confirm-msg');
+        const ok  = document.getElementById('confirm-ok');
+        const cc  = document.getElementById('confirm-cancel');
+        msg.textContent = message || '¿Confirmás la acción?';
+        ok.textContent = okText; cc.textContent = cancelText;
+        ok.classList.toggle('danger', danger); ok.classList.toggle('primary', !danger);
+        const onClose = ()=>{ ok.onclick=null; cc.onclick=null; resolve(dlg.returnValue==='ok'); };
+        const onCancel = (e)=>{ e.preventDefault(); dlg.close('cancel'); };
+        ok.onclick = ()=> dlg.close('ok'); cc.onclick = ()=> dlg.close('cancel');
+        dlg.addEventListener('close', onClose, {once:true});
+        dlg.addEventListener('cancel', onCancel, {once:true});
+        dlg.showModal();
+        setTimeout(()=> ok.focus(), 0);
+      });
+    }
+
+    /* =====================
+       DATOS (LocalStorage)
+       ===================== */
+    const LS_PRODUCTS = 'xilu_products';
+    const LS_OFFERS = 'xilu_offers';
+
+    const getLS = (k)=>{ try{return JSON.parse(localStorage.getItem(k)||'[]');}catch{return []} };
+    const setLS = (k,v)=> localStorage.setItem(k, JSON.stringify(v));
+
+    let products = getLS(LS_PRODUCTS); // En el panel NO hay fallback a JSON
+    let offers = getLS(LS_OFFERS);
+
+    function saveProducts(){ setLS(LS_PRODUCTS, products); }
+    function saveOffers(){ setLS(LS_OFFERS, offers); }
+
+    /* =====================
+       RENDER TABLAS
+       ===================== */
+    const ptbody = document.querySelector('#products-table tbody');
+    const otbody = document.querySelector('#offers-table tbody');
+
+    function renderProducts(){
+      ptbody.innerHTML = products.map(p=>{
+        const imgSrc = (p.image_data||p.image)||'';
+        const labels = (p.labels||[]).map(l=>`<span class="pill">${l}</span>`).join('');
+        return `<tr>
+          <td>${p.id}</td>
+          <td>${p.name||''}</td>
+          <td>${p.brand||''}</td>
+          <td>${p.presentation||''}</td>
+          <td>${p.category||''}</td>
+          <td>${p.price??''}</td>
+          <td>${p.in_stock? 'Sí':'No'}</td>
+          <td>${labels}</td>
+          <td class="img">${imgSrc?`<img class="thumb" src="${imgSrc}" alt="">`:''}</td>
+          <td class="actions">
+            <button class="btn" data-edit="${p.id}" type="button">Editar</button>
+            <button class="btn danger" data-del="${p.id}" type="button">Borrar</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    function renderOffers(){
+      otbody.innerHTML = offers.map(o=>{
+        const imgSrc = (o.image_data||o.image)||'';
+        return `<tr>
+          <td>${o.id}</td>
+          <td>${o.title||''}</td>
+          <td>${o.product_id??''}</td>
+          <td>${o.type||'none'}</td>
+          <td>${o.value??''}</td>
+          <td>${o.conditions||''}</td>
+          <td>${o.valid_from||''}</td>
+          <td>${o.valid_to||''}</td>
+          <td class="img">${imgSrc?`<img class="thumb" src="${imgSrc}" alt="">`:''}</td>
+          <td class="actions">
+            <button class="btn" data-edit-o="${o.id}" type="button">Editar</button>
+            <button class="btn danger" data-del-o="${o.id}" type="button">Borrar</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    /* =====================
+       UTILIDADES IMAGEN
+       ===================== */
+    function fileToDataURL(file){
+      return new Promise((res,rej)=>{
+        const r = new FileReader();
+        r.onload = ()=> res(r.result);
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+    }
+
+    /* =====================
+       EVENTOS UI
+       ===================== */
+    // Agregar / Editar producto
+    const dlgP = document.getElementById('dlg-product');
+    const formP = document.getElementById('form-product');
+    const prevP = document.getElementById('p-prev');
+
+    document.getElementById('add-product').addEventListener('click', ()=>{
+      formP.reset(); prevP.src=''; document.getElementById('p-id').value='';
+      dlgP.showModal();
+    });
+
+    ptbody.addEventListener('click', async (e)=>{
+      const id = e.target.getAttribute('data-edit') || e.target.getAttribute('data-del');
+      if(!id) return;
+      const idx = products.findIndex(p=> String(p.id)===String(id));
+      if(idx<0) return;
+      if(e.target.hasAttribute('data-edit')){
+        const p = products[idx];
+        document.getElementById('p-id').value = p.id;
+        document.getElementById('p-name').value = p.name||'';
+        document.getElementById('p-brand').value = p.brand||'';
+        document.getElementById('p-pres').value = p.presentation||'';
+        document.getElementById('p-cat').value = p.category||'';
+        document.getElementById('p-price').value = p.price??'';
+        document.getElementById('p-stock').value = p.in_stock? 'true':'false';
+        document.getElementById('p-labels').value = (p.labels||[]).join(', ');
+        document.getElementById('p-desc').value = p.description||'';
+        document.getElementById('p-image').value = p.image||'';
+        prevP.src = (p.image_data||p.image)||'';
+        dlgP.showModal();
+      } else {
+        const ok = await confirmXilu('¿Borrar producto?');
+        if(!ok) return;
+        products.splice(idx,1); saveProducts(); renderProducts();
+      }
+    });
+
+    document.getElementById('p-file').addEventListener('change', async (e)=>{
+      const f = e.target.files?.[0]; if(!f) return; prevP.src = await fileToDataURL(f);
+    });
+    document.getElementById('p-cancel').addEventListener('click', ()=> dlgP.close('cancel'));
+
+    formP.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const id = document.getElementById('p-id').value || Date.now();
+      const obj = {
+        id: Number(id),
+        name: document.getElementById('p-name').value.trim(),
+        brand: document.getElementById('p-brand').value.trim(),
+        presentation: document.getElementById('p-pres').value.trim(),
+        category: document.getElementById('p-cat').value.trim(),
+        price: document.getElementById('p-price').value? Number(document.getElementById('p-price').value): null,
+        in_stock: document.getElementById('p-stock').value==='true',
+        labels: document.getElementById('p-labels').value.split(',').map(s=>s.trim()).filter(Boolean),
+        description: document.getElementById('p-desc').value.trim(),
+        image: document.getElementById('p-image').value.trim(),
+        image_data: document.getElementById('p-prev').src && document.getElementById('p-prev').src.startsWith('data:') ? document.getElementById('p-prev').src : undefined,
+        published_at: new Date().toISOString()
+      };
+      const ix = products.findIndex(p=> String(p.id)===String(obj.id));
+      if(ix>=0) products[ix] = {...products[ix], ...obj}; else products.push(obj);
+      saveProducts(); renderProducts(); dlgP.close('ok');
+    });
+
+    // Agregar / Editar oferta
+    const dlgO = document.getElementById('dlg-offer');
+    const formO = document.getElementById('form-offer');
+    const prevO = document.getElementById('o-prev');
+
+    document.getElementById('add-offer').addEventListener('click', ()=>{ formO.reset(); prevO.src=''; document.getElementById('o-id').value=''; dlgO.showModal(); });
+
+    otbody.addEventListener('click', async (e)=>{
+      const id = e.target.getAttribute('data-edit-o') || e.target.getAttribute('data-del-o');
+      if(!id) return;
+      const idx = offers.findIndex(o=> String(o.id)===String(id)); if(idx<0) return;
+      if(e.target.hasAttribute('data-edit-o')){
+        const o = offers[idx];
+        document.getElementById('o-id').value = o.id;
+        document.getElementById('o-title').value = o.title||'';
+        document.getElementById('o-pid').value = o.product_id??'';
+        document.getElementById('o-type').value = o.type||'none';
+        document.getElementById('o-value').value = o.value??'';
+        document.getElementById('o-cond').value = o.conditions||'';
+        document.getElementById('o-from').value = o.valid_from||'';
+        document.getElementById('o-to').value = o.valid_to||'';
+        document.getElementById('o-image').value = o.image||'';
+        prevO.src = (o.image_data||o.image)||'';
+        dlgO.showModal();
+      } else {
+        const ok = await confirmXilu('¿Borrar oferta?');
+        if(!ok) return;
+        offers.splice(idx,1); saveOffers(); renderOffers();
+      }
+    });
+
+    document.getElementById('o-file').addEventListener('change', async (e)=>{
+      const f = e.target.files?.[0]; if(!f) return; prevO.src = await fileToDataURL(f);
+    });
+    document.getElementById('o-cancel').addEventListener('click', ()=> dlgO.close('cancel'));
+
+    formO.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const id = document.getElementById('o-id').value || Date.now();
+      const obj = {
+        id: Number(id),
+        title: document.getElementById('o-title').value.trim(),
+        product_id: document.getElementById('o-pid').value? Number(document.getElementById('o-pid').value): undefined,
+        type: document.getElementById('o-type').value,
+        value: document.getElementById('o-value').value? Number(document.getElementById('o-value').value): undefined,
+        conditions: document.getElementById('o-cond').value.trim(),
+        valid_from: document.getElementById('o-from').value||'',
+        valid_to: document.getElementById('o-to').value||'',
+        image: document.getElementById('o-image').value.trim(),
+        image_data: document.getElementById('o-prev').src && document.getElementById('o-prev').src.startsWith('data:') ? document.getElementById('o-prev').src : undefined
+      };
+      const ix = offers.findIndex(o=> String(o.id)===String(obj.id));
+      if(ix>=0) offers[ix] = {...offers[ix], ...obj}; else offers.push(obj);
+      saveOffers(); renderOffers(); dlgO.close('ok');
+    });
+
+    // Vaciar productos / ofertas
+    document.getElementById('clear-products').addEventListener('click', async ()=>{
+      const ok = await confirmXilu('¿Vaciar todos los productos guardados en este navegador?', {okText:'Sí, vaciar', danger:false});
+      if(!ok) return; products = []; saveProducts(); renderProducts();
+    });
+    document.getElementById('clear-offers').addEventListener('click', async ()=>{
+      const ok = await confirmXilu('¿Vaciar todas las ofertas guardadas en este navegador?', {okText:'Sí, vaciar', danger:false});
+      if(!ok) return; offers = []; saveOffers(); renderOffers();
+    });
+
+    // Cambiar PIN
+    document.getElementById('change-pin').addEventListener('click', async ()=>{
+      const nuevo = prompt('Nuevo PIN (4-12 dígitos)');
+      if(!nuevo) return; if(!/^\d{4,12}$/.test(nuevo)){ alert('PIN inválido'); return; }
+      localStorage.setItem(PIN_KEY, nuevo);
+      alert('PIN actualizado');
+    });
+
+    // Export / Import JSON (productos + ofertas)
+    document.getElementById('export-data').addEventListener('click', ()=>{
+      const blob = new Blob([JSON.stringify({products, offers}, null, 2)], {type:'application/json'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'xilu-backup.json'; a.click(); URL.revokeObjectURL(a.href);
+    });
+    document.getElementById('import-data').addEventListener('click', ()=> document.getElementById('import-file').click());
+    document.getElementById('import-file').addEventListener('change', async (e)=>{
+      const f = e.target.files?.[0]; if(!f) return; const txt = await f.text();
+      try{ const data = JSON.parse(txt); if(Array.isArray(data.products)) products = data.products; if(Array.isArray(data.offers)) offers = data.offers; saveProducts(); saveOffers(); renderProducts(); renderOffers(); alert('Importado'); }
+      catch{ alert('JSON inválido'); }
+      e.target.value = '';
+    });
+
+    // Primera renderización
+    renderProducts();
+    renderOffers();
+  </script>
+</body>
+</html>
