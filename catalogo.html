@@ -3,7 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+<<<<<<< HEAD
   <link rel="stylesheet" href="style.css" />
+=======
+  <link rel="stylesheet" href="assets/style.css" />
+>>>>>>> 57e6dee (mensaje de cambios)
   
 </head>
 <body>
@@ -83,7 +87,16 @@
   </footer>
 
   <script>
+<<<<<<< HEAD
     async function loadJSON(path){ try{ const r = await fetch(path,{cache:'no-store'}); return await r.json(); }catch(e){ return []; } }
+=======
+    async function loadJSON(path){
+    const url = path + (path.includes('?') ? '&' : '?') + 'v=' + Date.now();
+    const r = await fetch(url, { cache: 'no-store' });
+    return await r.json();
+  }
+
+>>>>>>> 57e6dee (mensaje de cambios)
     function getLS(key){ try{ return JSON.parse(localStorage.getItem(key)||'[]'); }catch{ return []; } }
     function priceFormat(n){ return n!=null ? '$ ' + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.') : ''; }
 
